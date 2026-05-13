@@ -26,19 +26,14 @@ class CausalSelfAttentionModern(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
         self.use_rope = rope
-        self.rope_cache: RoPECache | None = None
         self.max_pos = max_pos
+        self.rope_cache = RoPECache(self.d_head, self.max_pos) if rope else None
         self.sliding_window = sliding_window
         self.attention_sink = attention_sink
-
-    def _maybe_init_rope(self, device):
-        if self.use_rope and self.rope_cache is None:
-            self.rope_cache = RoPECache(self.d_head, self.max_pos, device=device)
 
     def forward(self, x: torch.Tensor, kv_cache: KVCache | None = None, start_pos: int = 0):
         """x: (B,T,C). If kv_cache given, we assume generation (T small, often 1)."""
         B, T, C = x.shape
-        self._maybe_init_rope(x.device)
 
         # Projections
         q = self.wq(x).view(B, T, self.n_head,   self.d_head).transpose(1, 2)    # (B,H, T,D)
